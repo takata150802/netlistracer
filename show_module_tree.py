@@ -10,6 +10,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pyverilog.utils.version
 from pyverilog.vparser.parser import parse
 
+from pyverilog.vparser.ast import Node
+from pyverilog.vparser.ast import ModuleDef
+from pyverilog.vparser.ast import Instance
+from pyverilog.vparser.ast import Input
+from pyverilog.vparser.ast import Output
+from pyverilog.vparser.ast import PortArg
 def module_tree(self, buf=sys.stdout, offset=0, showlineno=True):
     indent = 2
     lead = ' ' * offset
@@ -34,7 +40,7 @@ def module_tree(self, buf=sys.stdout, offset=0, showlineno=True):
         c.module_tree(buf, offset + indent, showlineno)
 
 
-def get_node(self, fn, buf=sys.stdout, offset=0, showlineno=True, ret=[]):
+def get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
     indent = 2
     lead = ' ' * offset
     
@@ -54,6 +60,40 @@ def get_node(self, fn, buf=sys.stdout, offset=0, showlineno=True, ret=[]):
         c.get_node(fn, buf, offset + indent, showlineno, ret)
     return ret
 
+gen_dot_header = \
+"""
+digraph {
+    rankdir="LR";
+    overlap = false;
+    splines = true;
+    node [shape = box];
+    edge [labelfloat=false];
+"""
+gen_dot_footer = "}"
+Instance.id_ = 0
+def gen_dot(self, ls_module):
+    if isinstance(self, Instance):
+        print ('subgraph cluster%d {'%Instance.id_)
+        print ("  graph [label = \"%s:%s\"];"%(self.module, self.name))
+        print ("tmp%d;"%Instance.id_)
+        Instance.id_ += 1
+        for m in ls_module:
+            ll = m.get_node(lambda x: isinstance(x, ModuleDef) and x.name == self.module, ret=[])
+            print(ls_module, ll, len(ll), file=sys.stderr)
+            if len(ll) > 1:
+                assert (False), "Fuck"
+            elif len(ll) == 1:
+                ll[0].gen_dot(ls_module)
+            else :
+                pass
+        print ('}')
+        for c in self.children():
+            c.gen_dot(ls_module)
+        return
+    else:
+        for c in self.children():
+            c.gen_dot(ls_module)
+    return
 
 def main():
     INFO = "Verilog code parser"
@@ -85,21 +125,21 @@ def main():
     if len(filelist) == 0:
         showVersion()
 
+    Node.get_node= get_node
+    Node.gen_dot = gen_dot
     ast, directives = parse(filelist,
                             preprocess_include=options.include,
                             preprocess_define=options.define)
-    from pyverilog.vparser.ast import Node
-    from pyverilog.vparser.ast import ModuleDef
-    from pyverilog.vparser.ast import Instance
-    from pyverilog.vparser.ast import Port
-    Node.module_tree = module_tree
-    Node.get_node= get_node
     ls_module = ast.get_node(lambda x: isinstance(x, ModuleDef), ret=[])
     for m in ls_module:
+        m.ls_input  = m.get_node(lambda x: isinstance(x, Input), ret=[])
+        m.ls_output  = m.get_node(lambda x: isinstance(x, Output), ret=[])
         m.ls_instance  = m.get_node(lambda x: isinstance(x, Instance), ret=[])
-    for m in ls_module:
         for i in m.ls_instance:
-            i.ls_port  = m.get_node(lambda x: isinstance(x, Port), ret=[])
+            i.ls_port  = m.get_node(lambda x: isinstance(x, PortArg), ret=[])
+    print (gen_dot_header)
+    ls_module[0].gen_dot(ls_module)
+    print (gen_dot_footer)
     
 if __name__ == '__main__':
     main()

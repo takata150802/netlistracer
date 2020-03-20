@@ -1,0 +1,29 @@
+
+digraph {
+    rankdir="LR";
+    overlap = false;
+    splines = true;
+    node [shape = box];
+    edge [labelfloat=false];
+
+subgraph cluster0 {
+  graph [label = "m0:i0"];
+tmp0;
+subgraph cluster1 {
+  graph [label = "m1:i1"];
+tmp1;
+subgraph cluster2 {
+  graph [label = "m2:i2"];
+tmp2;
+}
+}
+}
+subgraph cluster3 {
+  graph [label = "m1:i1"];
+tmp3;
+subgraph cluster4 {
+  graph [label = "m2:i2"];
+tmp4;
+}
+}
+}
