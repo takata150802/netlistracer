@@ -16,6 +16,9 @@ from pyverilog.vparser.ast import Instance
 from pyverilog.vparser.ast import Input
 from pyverilog.vparser.ast import Output
 from pyverilog.vparser.ast import PortArg
+from pyverilog.vparser.ast import Identifier
+from pyverilog.vparser.ast import Partselect
+from pyverilog.vparser.ast import IntConst
 def debug(x):
     print(x, file=sys.stderr, end=' ')
     return
@@ -71,12 +74,19 @@ digraph {
     rankdir="LR";
     overlap = false;
     splines = true;
-    node [shape = box];
+    node [shape = box, height=0.1];
     edge [labelfloat=false];
 """
+#   node[width=0.0, height=0.0, label="" shape=point];
 gen_dot_footer = "}"
 Instance.id_ = 0
-def gen_dot(self, ls_module):
+def gen_dot(self, ls_module, prefix=''):
+    """
+    TODO: visitorパターンにrefactorする
+    ↓ 2つを分離する点がvisitor patternを知ってる人にはわかりやすいかも
+    - selfに対するdot生成処理
+    - ls_instanceやportを呼び出す部分
+    """
     debug("gen_dot:")
     debug(self)
     debug('\n')
@@ -84,21 +94,95 @@ def gen_dot(self, ls_module):
     debug(ls_module)
     debug('\n')
 
+    def print_connect(src_node_name, prefix, instance, port):
+        d_prefix = prefix + "_" + instance.name
+        d_node_name = d_prefix + "_" + port.portname
+        wire_name = " " 
+        print ("%s -> %s[label = \"%s\"];"%(src_node_name, d_node_name, wire_name)) 
+
     if isinstance(self, ModuleDef):
+        """
+        下位モジュール
+        """
         for i in self.ls_instance:
-            i.gen_dot(ls_module)
+            i.gen_dot(ls_module, prefix)
+        """
+        入力ポート/出力ポートを全てdot_lang:nodeとして表現する
+        """
+        for i in self.ls_input + self.ls_output:
+            node_name = prefix + "_" + i.name
+            node_label = i.name
+            if hasattr_parents(i, 'width.msb') \
+                and hasattr_parents(i, 'width.lsb'):
+                msb = i.width.msb.value
+                lsb = i.width.lsb.value
+                node_label += "[%s:%s]"%(msb,lsb)
+            print ("%s[label = \"%s\"];"%(node_name, node_label))
+        """
+        self(Moduledef) input port(s) dummy node(branch)
+        """
+        for i in self.ls_input:
+            s_node_name = prefix + "_" + i.name
+            br_node_name = s_node_name + "_br"
+            print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
+            print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
+
+        """
+        課題：
+        下位モジュールが提供されない場合がある(セルライブラリなど)
+        下位モジュールの出力ポートであることを判定できない
+        if 下位モジュールが提供されている場合
+        elif 親モジュールの入力ポートor出力ポートに接続
+        elif 1対多接続
+        elif ポート名から推論o outは出力。それ以外は入力と推論
+        """
+        """
+        配線をdot_lang:edgeとして表現する
+        [1] self(Moduledef)の入力ポート->下位モジュールの入力ポート
+        [2] Constant -> 下位モジュール入力ポート
+        [3] 下位モジュールの出力ポート-> self(Moduledef)の出力ポート
+        [4] 下位モジュールの出力ポートのwire-> 下位モジュールの入力ポート
+        [ ] bit幅チェック
+        """
+        """[1] self(Moduledef)の入力ポート->下位モジュールの入力ポート"""
+        """[2] Constant -> 下位モジュール入力ポート"""
+        for j in self.ls_instance:
+            debug(j.portlist)
+            debug('\n')
+            for p in j.portlist:
+                assert(hasattr(p, 'argname'))
+                if isinstance(p.argname, IntConst):
+                    ### TODO:bit幅チェック
+                    const_value = p.argname.value
+                    const_node_name = prefix + "_const_" + j.name + p.portname
+                    print ("%s[label = \"%s\"];"%(const_node_name, const_value))
+                    print_connect(const_node_name, prefix, j, p)
+                    continue
+                elif isinstance(p.argname, Identifier):
+                    for i in self.ls_input:
+                        ### TODO:bit幅チェック
+                        arg_port_name = p.argname.name
+                        if i.name != arg_port_name:
+                            continue
+                        br_node_name = prefix + "_" + i.name + "_br"
+                        print_connect(br_node_name, prefix, j, p)
+                elif isinstance(p.argname, Partselect):
+                    for i in self.ls_input:
+                        ### TODO:bit幅チェック
+                        arg_port_name = p.argname.var.name
+                        if i.name != arg_port_name:
+                            continue
+                        br_node_name = prefix + "_" + i.name + "_br"
+                        print_connect(br_node_name, prefix, j, p)
+                else:
+                    """unconnected ports"""
+                    continue
         return
 
     elif isinstance(self, Instance):
-        """
-        TODO: visitorパターンにrefactorする
-              ↓ 2つを分離する点がvisitor patternを知ってる人にはわかりやすいかも
-              - selfに対するdot生成処理
-              - ls_instanceやportを呼び出す部分
-        """
         print ('subgraph cluster%d {'%Instance.id_)
         print ("  graph [label = \"%s:%s\"];"%(self.module, self.name))
-        print ("tmp%d;"%Instance.id_)
+        print ("tmp%d[width=0.0, height=0.0, shape=point];"%Instance.id_)
 
         Instance.id_ += 1
         ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == self.module]
@@ -111,17 +195,25 @@ def gen_dot(self, ls_module):
              + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
         assert (len(ll) == 1 or len(ll) == 0), emsg
         if len(ll) == 1:
-            ll[0].gen_dot(ls_module)
+            prefix += "_" + self.name
+            ll[0].gen_dot(ls_module, prefix)
         else :
             pass
         print ('}')
         return
 
     else:
-        for c in self.children():
-            c.gen_dot(ls_module)
         return
-    assert (False), "Unreachable."
+
+def hasattr_parents(obj, attrs):
+    assert (isinstance(attrs, str))
+    ls_attr = attrs.split('.')
+    for attr in ls_attr:
+        if hasattr(obj, attr):
+            obj = getattr(obj, attr)
+        else:
+            return False
+    return True
 
 def main():
     INFO = "Verilog code parser"
