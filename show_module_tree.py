@@ -72,7 +72,7 @@ gen_dot_header = \
 """
 digraph {
     rankdir="LR";
-    overlap = false;
+    overlap = true;
     splines = true;
     node [shape = box, height=0.1];
     edge [labelfloat=false];
@@ -233,13 +233,23 @@ def gen_dot(self, ls_module, prefix=''):
             else:
                 is_output_port = is_output_port_with_module_def
             for p in i.portlist:
-                if is_output_port(p, i, module_def):
+                if not is_output_port(p, i, module_def):
+                    continue
+                else:
                     s_node_name = prefix + "_" + i.name + "_" + p.portname
                     br_node_name = s_node_name + "_output_br"
                     print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
                     print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
-                else:
-                    pass
+                assert(hasattr(p, 'argname'))
+                if isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect):
+                    arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
+                    ll = [i for i in self.ls_output if i.name == arg_wire_name]
+                    assert (len(ll) == 1 or len(ll) == 0), "fuck"
+                    if (len(ll) == 1):
+                        d_node_name = prefix + "_" + ll[0].name
+                        print ("%s -> %s[label = \"%s\"];"%(br_node_name, d_node_name, "")) 
+                        continue
+
         """submodule.input_port"""
         for i in self.ls_instance:
             module_def = get_module_def(i, ls_module)
@@ -376,6 +386,8 @@ def main():
             i.get_node(lambda x: isinstance(x, PortArg), ret=i.ls_port)
     print (gen_dot_header)
     ls_module[0].gen_dot(ls_module)
+    for i in ls_module[0].ls_output:
+        print ("{rank = max; _%s;}"%i.name)
     print (gen_dot_footer)
     
 if __name__ == '__main__':
