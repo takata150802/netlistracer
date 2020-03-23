@@ -210,9 +210,9 @@ def gen_dot(self, ls_module, prefix=''):
                     [1] ```process for input_port```
                     [1-1] if 接続先 is Const?
                        -> 判定：inputport, edgeをprint()してcontinue
-                    [1-2] if 接続先 is other instanceのoutput_port?
+                    [1-2] if 接続先 is Parent_Moduleのinput_port?
                        -> 判定：inputport, edgeをprint()してcontinue
-                    [1-3] if 接続先 is Parent_Moduleのinput_port?
+                    [1-3] if 接続先 is other instanceのoutput_port?
                        -> 判定：input_port, edgeをprint()してcontinue
                 else:
                     pass
@@ -225,7 +225,7 @@ def gen_dot(self, ls_module, prefix=''):
                 -> 関数ポインタとして渡してやれば良い
         """
 
-        """output_port"""
+        """submodule.output_port"""
         for i in self.ls_instance:
             module_def = get_module_def(i, ls_module)
             if module_def == None:
@@ -235,12 +235,12 @@ def gen_dot(self, ls_module, prefix=''):
             for p in i.portlist:
                 if is_output_port(p, i, module_def):
                     s_node_name = prefix + "_" + i.name + "_" + p.portname
-                    br_node_name = s_node_name + "_output_input_br"
+                    br_node_name = s_node_name + "_output_br"
                     print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
                     print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
                 else:
                     pass
-        """input_port"""
+        """submodule.input_port"""
         for i in self.ls_instance:
             module_def = get_module_def(i, ls_module)
             if module_def == None:
@@ -248,9 +248,11 @@ def gen_dot(self, ls_module, prefix=''):
             else:
                 is_output_port = is_output_port_with_module_def
             for p in i.portlist:
+                assert(hasattr(p, 'argname'))
                 if not is_output_port(p, i, module_def):
-                    assert(hasattr(p, 'argname'))
+                    """[1] ```process for input_port```"""
                     if isinstance(p.argname, IntConst):
+                        """[1-1] if 接続先 is Const?"""
                         ### TODO:bit幅チェック
                         const_value = p.argname.value
                         const_node_name = prefix + "_const_" + i.name + p.portname
@@ -258,6 +260,8 @@ def gen_dot(self, ls_module, prefix=''):
                         print_connect(const_node_name, prefix, i, p)
                         continue
                     elif isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect):
+                        """[1-2] if 接続先 is Parent_Moduleのinput_port?"""
+                        """[1-3] if 接続先 is other instanceのoutput_port?"""
                         arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
                         ll = [i for i in self.ls_input if i.name == arg_wire_name]
                         assert (len(ll) == 1 or len(ll) == 0), "fuck"
@@ -265,6 +269,22 @@ def gen_dot(self, ls_module, prefix=''):
                             br_node_name = prefix + "_" + ll[0].name + "_input_br"
                             print_connect(br_node_name, prefix, i, p)
                             continue
+                        for ii in self.ls_instance:
+                            module_def = get_module_def(ii, ls_module)
+                            if module_def == None:
+                                is_output_port = is_output_port_estimate
+                            else:
+                                is_output_port = is_output_port_with_module_def
+                            for pp in ii.portlist:
+                                assert(hasattr(pp, 'argname'))
+                                if is_output_port(pp, ii, module_def) \
+                                   and ( \
+                                       isinstance(pp.argname, Identifier) or isinstance(pp.argname, Partselect) \
+                                   ):
+                                    s_arg_wire_name = pp.argname.name if isinstance(pp.argname, Identifier) else pp.argname.var.name
+                                    if s_arg_wire_name == arg_wire_name:
+                                        br_node_name = prefix + "_" + ii.name + "_" + pp.portname + "_output_br"
+                                        print_connect(br_node_name, prefix, i, p)
                     else:
                         pass
                 else:
