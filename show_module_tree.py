@@ -132,20 +132,63 @@ def gen_dot(self, ls_module, prefix=''):
         下位モジュールが提供されない場合がある(セルライブラリなど)
         下位モジュールの出力ポートであることを判定できない
         if 下位モジュールが提供されている場合
-        elif 親モジュールの入力ポートor出力ポートに接続
-        elif 1対多接続
-        elif ポート名から推論o outは出力。それ以外は入力と推論
+        elif 親モジュールの入力ポートor 別下位モジュールの出力ポートに接続 -> 判定：入力ポート
+        elif １対1接続 && 親モジュールの出力ポートor 別下位モジュールの入力ポートに接続 -> 判定：出力ポート
+        elif ポート名から推論する。outは出力,それ以外は入力と推論。
+
+        --> ここまで書いて気づいたが、まずoutput_portを全て確定させるべき
+            [理由] あるoutput_portがoutput_portだと認識されるまで
+                   そのoutput_portの対向input_portは、edgeを定義できないから
+
+
+        理想案：
+        for i in (all instance)：
+            [1] if モジュール定義があるinstance
+            for p in (all input/output_port)：
+                if p is input_port:
+                    [1] ```process for input_port```
+                    [1-1] if 接続先 is Parent_Moduleのinput_port?
+                       -> 判定：inputport, edgeをprint()してcontinue
+                    [1-2] if 接続先 is other instanceのoutput_port?
+                       -> 判定：inputport, edgeをprint()してcontinue
+                    [1-3] if 接続先 is Const?
+                       -> 判定：input_port, edgeをprint()してcontinue
+                elif p is input_port:
+                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+                else:
+                    assert(False), p "is Undefined port"
+
+            [2] else (モジュール定義がないinstance)
+            for p in (all input/output_port)：
+                [1] ```process for input_port```
+                [1-1] if 接続先 is Parent_Moduleのinput_port?
+                    -> 判定：inputport, edgeをprint()してcontinue
+                [1-2] if 接続先 is other instanceのoutput_port?
+                    -> 判定：inputport, edgeをprint()してcontinue
+                [1-3] if 接続先 is Const?
+                    -> 判定：input_port, edgeをprint()してcontinue
+
+                [2] ```process for output_port```
+                [2-0] ls_connection = [] 初期化
+                [2-1] if 接続先 is Parent_Moduleのoutput_port?
+                    -> ls_connectionに追加
+                [2-2] if 接続先 is other instanceのinput_port?
+                    -> ls_connectionに追加
+                [2-3] if 接続先 is other instanceのunknown_port?
+                    -> ls_connectionに追加
+                [2-4] if len(ls_connection) == 1?
+                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+
+
+                [3] 推論 
+                     (outputort推論条件を列挙する.[理由]output_portのほうがinput_portより数が少ないから)
+                [3-1-1] if instanceのモジュール名 == CLKINV && port名 == x:
+                ...
+                [3-1-n] elif instanceのモジュール名 == SRFF && port名 == q:
+                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+                [3-2] else
+                    -> 判定：input_port, edgeをprint()してcontinue
         """
-        """
-        配線をdot_lang:edgeとして表現する
-        [1] self(Moduledef)の入力ポート->下位モジュールの入力ポート
-        [2] Constant -> 下位モジュール入力ポート
-        [3] 下位モジュールの出力ポート-> self(Moduledef)の出力ポート
-        [4] 下位モジュールの出力ポートのwire-> 下位モジュールの入力ポート
-        [ ] bit幅チェック
-        """
-        """[1] self(Moduledef)の入力ポート->下位モジュールの入力ポート"""
-        """[2] Constant -> 下位モジュール入力ポート"""
         for j in self.ls_instance:
             debug(j.portlist)
             debug('\n')
