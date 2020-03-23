@@ -94,6 +94,42 @@ def gen_dot(self, ls_module, prefix=''):
     debug(ls_module)
     debug('\n')
 
+    def get_module_def(inst, ls_module):
+        assert (inst, Instance)
+        emsg = "\n" \
+             + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
+             + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
+        ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
+        assert (len(ll) == 1 or len(ll) == 0), emsg
+        if len(ll) == 1:
+            return ll[0]
+        else :
+            return None
+
+    def is_output_port_estimate(p, i, module_def=None):
+        assert (isinstance(p, PortArg))
+        assert (isinstance(i, Instance))
+        assert (module_def == None)
+
+        """pがoutput_portだと推測できる条件"""
+        portname = p.portname
+        if portname[0] == 'o':
+            return True
+        if portname[0] == 'q':
+            return True
+        return False
+
+    def is_output_port_with_module_def(p, i, module_def):
+        assert (isinstance(p, PortArg))
+        assert (isinstance(i, Instance))
+        assert (isinstance(module_def, ModuleDef))
+
+        portname = p.portname
+        for o in module_def.ls_output:
+            if o.name == portname:
+                return True
+        return False
+
     def print_connect(src_node_name, prefix, instance, port):
         d_prefix = prefix + "_" + instance.name
         d_node_name = d_prefix + "_" + port.portname
@@ -123,103 +159,116 @@ def gen_dot(self, ls_module, prefix=''):
         """
         for i in self.ls_input:
             s_node_name = prefix + "_" + i.name
-            br_node_name = s_node_name + "_br"
+            br_node_name = s_node_name + "_input_br"
             print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
             print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
 
         """
-        課題：
+        [課題]
         下位モジュールが提供されない場合がある(セルライブラリなど)
         下位モジュールの出力ポートであることを判定できない
-        if 下位モジュールが提供されている場合
-        elif 親モジュールの入力ポートor 別下位モジュールの出力ポートに接続 -> 判定：入力ポート
-        elif １対1接続 && 親モジュールの出力ポートor 別下位モジュールの入力ポートに接続 -> 判定：出力ポート
-        elif ポート名から推論する。outは出力,それ以外は入力と推論。
 
-        --> ここまで書いて気づいたが、まずoutput_portを全て確定させるべき
-            [理由] あるoutput_portがoutput_portだと認識されるまで
-                   そのoutput_portの対向input_portは、edgeを定義できないから
+        [解決]
+        とにかく、output_portはoutput_portであると確定させる
+        下位モジュールが提供されない場合
+        アドホックな条件(あるポートがoutput_portと推測できる条件)を列挙しておき、
+        その条件を満たすならoutput_port
+        満たさないならinput_portと推測することにする
 
+        [理由] 
+        あるoutput_portがoutput_portだと認識されるまで
+        そのoutput_portの対向input_portは、edgeを定義できないから
 
-        理想案：
+        [例]
+        if instanceのモジュール名 == CLKINV && port名 == x:
+            -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+            ...
+        elif instanceのモジュール名 == SRFF && port名 == q:
+            -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+        else:
+            pass
+
+        [擬似コード]
+        for i in (all instance)：
+            [1] if モジュール定義があるinstance
+            for p in (all input/output_port)：
+                if p is output_port:
+                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+                else:
+                    pass
+            [2] else (モジュール定義がないinstance)
+            for p in (all input/output_port)：
+               (同上, input_port/output_portの判定方法だけが異なる
+                - Moduledefのls_input/ls_outputを逆引きするか
+                - 推測(module名とport名に基づく) 
+                -> 関数ポインタとして渡してやれば良い
+
         for i in (all instance)：
             [1] if モジュール定義があるinstance
             for p in (all input/output_port)：
                 if p is input_port:
                     [1] ```process for input_port```
-                    [1-1] if 接続先 is Parent_Moduleのinput_port?
+                    [1-1] if 接続先 is Const?
                        -> 判定：inputport, edgeをprint()してcontinue
                     [1-2] if 接続先 is other instanceのoutput_port?
                        -> 判定：inputport, edgeをprint()してcontinue
-                    [1-3] if 接続先 is Const?
+                    [1-3] if 接続先 is Parent_Moduleのinput_port?
                        -> 判定：input_port, edgeをprint()してcontinue
-                elif p is input_port:
-                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
                 else:
-                    assert(False), p "is Undefined port"
+                    pass
 
             [2] else (モジュール定義がないinstance)
             for p in (all input/output_port)：
-                [1] ```process for input_port```
-                [1-1] if 接続先 is Parent_Moduleのinput_port?
-                    -> 判定：inputport, edgeをprint()してcontinue
-                [1-2] if 接続先 is other instanceのoutput_port?
-                    -> 判定：inputport, edgeをprint()してcontinue
-                [1-3] if 接続先 is Const?
-                    -> 判定：input_port, edgeをprint()してcontinue
-
-                [2] ```process for output_port```
-                [2-0] ls_connection = [] 初期化
-                [2-1] if 接続先 is Parent_Moduleのoutput_port?
-                    -> ls_connectionに追加
-                [2-2] if 接続先 is other instanceのinput_port?
-                    -> ls_connectionに追加
-                [2-3] if 接続先 is other instanceのunknown_port?
-                    -> ls_connectionに追加
-                [2-4] if len(ls_connection) == 1?
-                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
-
-
-                [3] 推論 
-                     (outputort推論条件を列挙する.[理由]output_portのほうがinput_portより数が少ないから)
-                [3-1-1] if instanceのモジュール名 == CLKINV && port名 == x:
-                ...
-                [3-1-n] elif instanceのモジュール名 == SRFF && port名 == q:
-                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
-                [3-2] else
-                    -> 判定：input_port, edgeをprint()してcontinue
+               (同上, input_port/output_portの判定方法だけが異なる
+                - Moduledefのls_input/ls_outputを逆引きするか
+                - 推測(module名とport名に基づく) 
+                -> 関数ポインタとして渡してやれば良い
         """
-        for j in self.ls_instance:
-            debug(j.portlist)
-            debug('\n')
-            for p in j.portlist:
-                assert(hasattr(p, 'argname'))
-                if isinstance(p.argname, IntConst):
-                    ### TODO:bit幅チェック
-                    const_value = p.argname.value
-                    const_node_name = prefix + "_const_" + j.name + p.portname
-                    print ("%s[label = \"%s\"];"%(const_node_name, const_value))
-                    print_connect(const_node_name, prefix, j, p)
-                    continue
-                elif isinstance(p.argname, Identifier):
-                    for i in self.ls_input:
-                        ### TODO:bit幅チェック
-                        arg_port_name = p.argname.name
-                        if i.name != arg_port_name:
-                            continue
-                        br_node_name = prefix + "_" + i.name + "_br"
-                        print_connect(br_node_name, prefix, j, p)
-                elif isinstance(p.argname, Partselect):
-                    for i in self.ls_input:
-                        ### TODO:bit幅チェック
-                        arg_port_name = p.argname.var.name
-                        if i.name != arg_port_name:
-                            continue
-                        br_node_name = prefix + "_" + i.name + "_br"
-                        print_connect(br_node_name, prefix, j, p)
+
+        """output_port"""
+        for i in self.ls_instance:
+            module_def = get_module_def(i, ls_module)
+            if module_def == None:
+                is_output_port = is_output_port_estimate
+            else:
+                is_output_port = is_output_port_with_module_def
+            for p in i.portlist:
+                if is_output_port(p, i, module_def):
+                    s_node_name = prefix + "_" + i.name + "_" + p.portname
+                    br_node_name = s_node_name + "_output_input_br"
+                    print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
+                    print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
                 else:
-                    """unconnected ports"""
-                    continue
+                    pass
+        """input_port"""
+        for i in self.ls_instance:
+            module_def = get_module_def(i, ls_module)
+            if module_def == None:
+                is_output_port = is_output_port_estimate
+            else:
+                is_output_port = is_output_port_with_module_def
+            for p in i.portlist:
+                if not is_output_port(p, i, module_def):
+                    assert(hasattr(p, 'argname'))
+                    if isinstance(p.argname, IntConst):
+                        ### TODO:bit幅チェック
+                        const_value = p.argname.value
+                        const_node_name = prefix + "_const_" + i.name + p.portname
+                        print ("%s[label = \"%s\"];"%(const_node_name, const_value))
+                        print_connect(const_node_name, prefix, i, p)
+                        continue
+                    elif isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect):
+                        arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
+                        ll = [i for i in self.ls_input if i.name == arg_wire_name]
+                        assert (len(ll) == 1 or len(ll) == 0), "fuck"
+                        if (len(ll) == 1):
+                            br_node_name = prefix + "_" + ll[0].name + "_input_br"
+                            print_connect(br_node_name, prefix, i, p)
+                            continue
+                    else:
+                        pass
+                else:
+                    pass
         return
 
     elif isinstance(self, Instance):
