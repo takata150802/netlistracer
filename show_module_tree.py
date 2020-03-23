@@ -72,7 +72,7 @@ gen_dot_header = \
 """
 digraph {
     rankdir="LR";
-    overlap = true;
+    overlap = false;
     splines = true;
     node [shape = box, height=0.1];
     edge [labelfloat=false];
@@ -130,10 +130,9 @@ def gen_dot(self, ls_module, prefix=''):
                 return True
         return False
 
-    def print_connect(src_node_name, prefix, instance, port):
+    def print_connect(src_node_name, prefix, instance, port, wire_name=" "):
         d_prefix = prefix + "_" + instance.name
         d_node_name = d_prefix + "_" + port.portname
-        wire_name = " " 
         print ("%s -> %s[label = \"%s\"];"%(src_node_name, d_node_name, wire_name)) 
 
     if isinstance(self, ModuleDef):
@@ -294,7 +293,7 @@ def gen_dot(self, ls_module, prefix=''):
                                     s_arg_wire_name = pp.argname.name if isinstance(pp.argname, Identifier) else pp.argname.var.name
                                     if s_arg_wire_name == arg_wire_name:
                                         br_node_name = prefix + "_" + ii.name + "_" + pp.portname + "_output_br"
-                                        print_connect(br_node_name, prefix, i, p)
+                                        print_connect(br_node_name, prefix, i, p, arg_wire_name)
                     else:
                         pass
                 else:

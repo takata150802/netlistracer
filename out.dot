@@ -1,8 +1,8 @@
 
 digraph {
     rankdir="LR";
-    overlap = true;
-    splines = false;
+    overlap = false;
+    splines = true;
     node [shape = box, height=0.1];
     edge [labelfloat=false];
 
@@ -143,10 +143,10 @@ _i1_out0 -> _i1_out0_output_br[dir = none];
 _i1_out1_output_br[width=0.01, height=0.01, shape=point];
 _i1_out1 -> _i1_out1_output_br[dir = none];
 _clk_input_br -> _i0_clk[label = " "];
-_i1_out1_output_br -> _i0_in0[label = " "];
+_i1_out1_output_br -> _i0_in0[label = "w0"];
 _in0_input_br -> _i0_in1[label = " "];
 _clk_input_br -> _i1_clk[label = " "];
-_i0_out0_output_br -> _i1_in0[label = " "];
+_i0_out0_output_br -> _i1_in0[label = "out1"];
 _in1_input_br -> _i1_in1[label = " "];
 {rank = max; _out0;}
 {rank = max; _out1;}
