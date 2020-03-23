@@ -152,7 +152,7 @@ def gen_dot(self, ls_module, prefix=''):
                 msb = i.width.msb.value
                 lsb = i.width.lsb.value
                 node_label += "[%s:%s]"%(msb,lsb)
-            print ("%s[label = \"%s\"];"%(node_name, node_label))
+            print ("%s[label = \"%s\", style = \"rounded,filled\"];"%(node_name, node_label))
         """
         self(Moduledef) input port(s) dummy node(branch)
         """
