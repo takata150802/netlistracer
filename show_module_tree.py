@@ -89,9 +89,9 @@ def gen_dot(self, ls_module, prefix=''):
     """
     debug("gen_dot:")
     debug(self)
-    debug('\n')
-    debug("ls_module:")
-    debug(ls_module)
+    if hasattr(self, 'name'):
+        debug(self.name)
+    debug(", prefix="+prefix)
     debug('\n')
 
     def get_module_def(inst, ls_module):
