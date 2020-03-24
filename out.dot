@@ -121,17 +121,32 @@ _i1_i3_out_output_br -> _i1_out1[label = ""];
 _i1_clk_input_br -> _i1_i2_clk[label = " "];
 _i1_clk_input_br -> _i1_i3_clk[label = " "];
 }
+subgraph cluster7 {
+  graph [label = "m2:i2"];
+tmp7[width=0.0, height=0.0, shape=point];
+_i2_clk[label = "clk", style = "rounded,filled"];
+_i2_in[label = "in", style = "rounded,filled"];
+_i2_out[label = "out", style = "rounded,filled"];
+_i2_clk_input_br[width=0.01, height=0.01, shape=point];
+_i2_clk -> _i2_clk_input_br[dir = none];
+_i2_in_input_br[width=0.01, height=0.01, shape=point];
+_i2_in -> _i2_in_input_br[dir = none];
+}
 _clk[label = "clk", style = "rounded,filled"];
 _in0[label = "in0[1:0]", style = "rounded,filled"];
 _in1[label = "in1", style = "rounded,filled"];
+_in2[label = "in2", style = "rounded,filled"];
 _out0[label = "out0", style = "rounded,filled"];
 _out1[label = "out1[7:0]", style = "rounded,filled"];
+_out2[label = "out2", style = "rounded,filled"];
 _clk_input_br[width=0.01, height=0.01, shape=point];
 _clk -> _clk_input_br[dir = none];
 _in0_input_br[width=0.01, height=0.01, shape=point];
 _in0 -> _in0_input_br[dir = none];
 _in1_input_br[width=0.01, height=0.01, shape=point];
 _in1 -> _in1_input_br[dir = none];
+_in2_input_br[width=0.01, height=0.01, shape=point];
+_in2 -> _in2_input_br[dir = none];
 _i0_out0_output_br[width=0.01, height=0.01, shape=point];
 _i0_out0 -> _i0_out0_output_br[dir = none];
 _i0_out0_output_br -> _out1[label = ""];
@@ -142,12 +157,25 @@ _i1_out0_output_br[width=0.01, height=0.01, shape=point];
 _i1_out0 -> _i1_out0_output_br[dir = none];
 _i1_out1_output_br[width=0.01, height=0.01, shape=point];
 _i1_out1 -> _i1_out1_output_br[dir = none];
+_i2_out_output_br[width=0.01, height=0.01, shape=point];
+_i2_out -> _i2_out_output_br[dir = none];
+_i2_out_output_br -> _out2[label = ""];
 _clk_input_br -> _i0_clk[label = " "];
 _i1_out1_output_br -> _i0_in0[label = "w0"];
 _in0_input_br -> _i0_in1[label = " "];
+_i0_out0_output_br -> _i0_out0[label = "out1"];
+_i0_out1_output_br -> _i0_out1[label = "out0"];
 _clk_input_br -> _i1_clk[label = " "];
 _i0_out0_output_br -> _i1_in0[label = "out1"];
 _in1_input_br -> _i1_in1[label = " "];
+_in1_input_br -> _i1_out0[label = " "];
+_i1_out1_output_br -> _i1_out1[label = "w0"];
+_in2_input_br -> _i2_in[label = " "];
+{rank = min; _clk;}
+{rank = min; _in0;}
+{rank = min; _in1;}
+{rank = min; _in2;}
 {rank = max; _out0;}
 {rank = max; _out1;}
+{rank = max; _out2;}
 }
