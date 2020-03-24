@@ -279,6 +279,8 @@ def gen_dot(self, ls_module, prefix=''):
                             print_connect(br_node_name, prefix, i, p)
                             continue
                         for ii in self.ls_instance:
+                            if i is ii:
+                                continue
                             module_def = get_module_def(ii, ls_module)
                             if module_def == None:
                                 is_output_port = is_output_port_estimate
