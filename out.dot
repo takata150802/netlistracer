@@ -23,6 +23,8 @@ _i0_i1_i2_clk -> _i0_i1_i2_clk_input_br[dir = none];
 _i0_i1_i2_in_input_br[width=0.01, height=0.01, shape=point];
 _i0_i1_i2_in -> _i0_i1_i2_in_input_br[dir = none];
 }
+_i0_i1_i2_out_output_br[width=0.01, height=0.01, shape=point];
+_i0_i1_i2_out -> _i0_i1_i2_out_output_br[dir = none];
 subgraph cluster3 {
   graph [label = "m2:i3"];
 tmp3[width=0.0, height=0.0, shape=point];
@@ -34,6 +36,8 @@ _i0_i1_i3_clk -> _i0_i1_i3_clk_input_br[dir = none];
 _i0_i1_i3_in_input_br[width=0.01, height=0.01, shape=point];
 _i0_i1_i3_in -> _i0_i1_i3_in_input_br[dir = none];
 }
+_i0_i1_i3_out_output_br[width=0.01, height=0.01, shape=point];
+_i0_i1_i3_out -> _i0_i1_i3_out_output_br[dir = none];
 _i0_i1_clk[label = "clk", style = "rounded,filled"];
 _i0_i1_in0[label = "in0", style = "rounded,filled"];
 _i0_i1_in1[label = "in1", style = "rounded,filled"];
@@ -45,15 +49,15 @@ _i0_i1_in0_input_br[width=0.01, height=0.01, shape=point];
 _i0_i1_in0 -> _i0_i1_in0_input_br[dir = none];
 _i0_i1_in1_input_br[width=0.01, height=0.01, shape=point];
 _i0_i1_in1 -> _i0_i1_in1_input_br[dir = none];
-_i0_i1_i2_out_output_br[width=0.01, height=0.01, shape=point];
-_i0_i1_i2_out -> _i0_i1_i2_out_output_br[dir = none];
 _i0_i1_i2_out_output_br -> _i0_i1_out0[label = ""];
-_i0_i1_i3_out_output_br[width=0.01, height=0.01, shape=point];
-_i0_i1_i3_out -> _i0_i1_i3_out_output_br[dir = none];
 _i0_i1_i3_out_output_br -> _i0_i1_out1[label = ""];
 _i0_i1_clk_input_br -> _i0_i1_i2_clk[label = " "];
 _i0_i1_clk_input_br -> _i0_i1_i3_clk[label = " "];
 }
+_i0_i1_out0_output_br[width=0.01, height=0.01, shape=point];
+_i0_i1_out0 -> _i0_i1_out0_output_br[dir = none];
+_i0_i1_out1_output_br[width=0.01, height=0.01, shape=point];
+_i0_i1_out1 -> _i0_i1_out1_output_br[dir = none];
 _i0_clk[label = "clk", style = "rounded,filled"];
 _i0_in0[label = "in0[7:0]", style = "rounded,filled"];
 _i0_in1[label = "in1[1:0]", style = "rounded,filled"];
@@ -65,17 +69,17 @@ _i0_in0_input_br[width=0.01, height=0.01, shape=point];
 _i0_in0 -> _i0_in0_input_br[dir = none];
 _i0_in1_input_br[width=0.01, height=0.01, shape=point];
 _i0_in1 -> _i0_in1_input_br[dir = none];
-_i0_i1_out0_output_br[width=0.01, height=0.01, shape=point];
-_i0_i1_out0 -> _i0_i1_out0_output_br[dir = none];
 _i0_i1_out0_output_br -> _i0_out0[label = ""];
-_i0_i1_out1_output_br[width=0.01, height=0.01, shape=point];
-_i0_i1_out1 -> _i0_i1_out1_output_br[dir = none];
 _i0_i1_out1_output_br -> _i0_out1[label = ""];
 _i0_clk_input_br -> _i0_i1_clk[label = " "];
 _i0_in0_input_br -> _i0_i1_in0[label = " "];
 _i0_const_i1in1[label = "1'h0"];
 _i0_const_i1in1 -> _i0_i1_in1[label = " "];
 }
+_i0_out0_output_br[width=0.01, height=0.01, shape=point];
+_i0_out0 -> _i0_out0_output_br[dir = none];
+_i0_out1_output_br[width=0.01, height=0.01, shape=point];
+_i0_out1 -> _i0_out1_output_br[dir = none];
 subgraph cluster4 {
   graph [label = "m1:i1"];
 tmp4[width=0.0, height=0.0, shape=point];
@@ -90,6 +94,8 @@ _i1_i2_clk -> _i1_i2_clk_input_br[dir = none];
 _i1_i2_in_input_br[width=0.01, height=0.01, shape=point];
 _i1_i2_in -> _i1_i2_in_input_br[dir = none];
 }
+_i1_i2_out_output_br[width=0.01, height=0.01, shape=point];
+_i1_i2_out -> _i1_i2_out_output_br[dir = none];
 subgraph cluster6 {
   graph [label = "m2:i3"];
 tmp6[width=0.0, height=0.0, shape=point];
@@ -101,6 +107,8 @@ _i1_i3_clk -> _i1_i3_clk_input_br[dir = none];
 _i1_i3_in_input_br[width=0.01, height=0.01, shape=point];
 _i1_i3_in -> _i1_i3_in_input_br[dir = none];
 }
+_i1_i3_out_output_br[width=0.01, height=0.01, shape=point];
+_i1_i3_out -> _i1_i3_out_output_br[dir = none];
 _i1_clk[label = "clk", style = "rounded,filled"];
 _i1_in0[label = "in0", style = "rounded,filled"];
 _i1_in1[label = "in1", style = "rounded,filled"];
@@ -112,15 +120,15 @@ _i1_in0_input_br[width=0.01, height=0.01, shape=point];
 _i1_in0 -> _i1_in0_input_br[dir = none];
 _i1_in1_input_br[width=0.01, height=0.01, shape=point];
 _i1_in1 -> _i1_in1_input_br[dir = none];
-_i1_i2_out_output_br[width=0.01, height=0.01, shape=point];
-_i1_i2_out -> _i1_i2_out_output_br[dir = none];
 _i1_i2_out_output_br -> _i1_out0[label = ""];
-_i1_i3_out_output_br[width=0.01, height=0.01, shape=point];
-_i1_i3_out -> _i1_i3_out_output_br[dir = none];
 _i1_i3_out_output_br -> _i1_out1[label = ""];
 _i1_clk_input_br -> _i1_i2_clk[label = " "];
 _i1_clk_input_br -> _i1_i3_clk[label = " "];
 }
+_i1_out0_output_br[width=0.01, height=0.01, shape=point];
+_i1_out0 -> _i1_out0_output_br[dir = none];
+_i1_out1_output_br[width=0.01, height=0.01, shape=point];
+_i1_out1 -> _i1_out1_output_br[dir = none];
 subgraph cluster7 {
   graph [label = "m2:i2"];
 tmp7[width=0.0, height=0.0, shape=point];
@@ -132,6 +140,8 @@ _i2_clk -> _i2_clk_input_br[dir = none];
 _i2_in_input_br[width=0.01, height=0.01, shape=point];
 _i2_in -> _i2_in_input_br[dir = none];
 }
+_i2_out_output_br[width=0.01, height=0.01, shape=point];
+_i2_out -> _i2_out_output_br[dir = none];
 _clk[label = "clk", style = "rounded,filled"];
 _in0[label = "in0[1:0]", style = "rounded,filled"];
 _in1[label = "in1", style = "rounded,filled"];
@@ -144,18 +154,8 @@ _in0_input_br[width=0.01, height=0.01, shape=point];
 _in0 -> _in0_input_br[dir = none];
 _in1_input_br[width=0.01, height=0.01, shape=point];
 _in1 -> _in1_input_br[dir = none];
-_i0_out0_output_br[width=0.01, height=0.01, shape=point];
-_i0_out0 -> _i0_out0_output_br[dir = none];
-_i0_out0_output_br -> _out1[label = ""];
-_i0_out1_output_br[width=0.01, height=0.01, shape=point];
-_i0_out1 -> _i0_out1_output_br[dir = none];
 _i0_out1_output_br -> _out0[label = ""];
-_i1_out0_output_br[width=0.01, height=0.01, shape=point];
-_i1_out0 -> _i1_out0_output_br[dir = none];
-_i1_out1_output_br[width=0.01, height=0.01, shape=point];
-_i1_out1 -> _i1_out1_output_br[dir = none];
-_i2_out_output_br[width=0.01, height=0.01, shape=point];
-_i2_out -> _i2_out_output_br[dir = none];
+_i0_out0_output_br -> _out1[label = ""];
 _i2_out_output_br -> _out2[label = ""];
 _clk_input_br -> _i0_clk[label = " "];
 _i1_out1_output_br -> _i0_in0[label = "w0"];

@@ -166,90 +166,61 @@ def gen_dot(self, ls_module, prefix=''):
         [課題]
         下位モジュールが提供されない場合がある(セルライブラリなど)
         下位モジュールの出力ポートであることを判定できない
+        あるoutput_portがoutput_portだと認識されるまで
+        そのoutput_portの対向input_portは、edgeを定義できなくなる
 
         [解決]
-        とにかく、output_portはoutput_portであると確定させる
-        下位モジュールが提供されない場合
-        アドホックな条件(あるポートがoutput_portと推測できる条件)を列挙しておき、
-        その条件を満たすならoutput_port
-        満たさないならinput_portと推測することにする
-
-        [理由] 
-        あるoutput_portがoutput_portだと認識されるまで
-        そのoutput_portの対向input_portは、edgeを定義できないから
-
-        [例]
-        if instanceのモジュール名 == CLKINV && port名 == x:
-            -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
-            ...
-        elif instanceのモジュール名 == SRFF && port名 == q:
-            -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
-        else:
-            pass
+        - ModuleDef.gen_dot()でoutput_portを特定し、outport用のbranch_nodeをprint()済み
+          - output_portの特定方法は以下の通り
+            - 下位モジュールが提供されている場合:  impl:is_output_port_with_module_def()
+              ModuleDef.ls_outputを逆引きする
+            - 下位モジュールが提供されていない場合: impl:is_output_port_estimate()
+               アドホックな条件(あるポートがoutput_portと推測できる条件)を列挙しておき、
+               その条件を満たすならoutput_port
+                満たさないならinput_portと推測することにする
+              [例]
+              if instanceのモジュール名 == CLKINV && port名 == x:
+                  -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+                  ...
+              elif instanceのモジュール名 == SRFF && port名 == q:
+                  -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
+              else:
+                  pass
+        - Instance.gen_dot()ではoutput_port/input_portは特定済みなので
+          loader/dirver 配線関係のtraceが容易
 
         [擬似コード]
-        for i in (all instance)：
-            [1] if モジュール定義があるinstance
-            for p in (all input/output_port)：
-                if p is output_port:
-                    -> 判定：output_port, branch_nodeをprint()してcontinue, edgeはprint()しない
-                else:
-                    pass
-            [2] else (モジュール定義がないinstance)
-            for p in (all input/output_port)：
-               (同上, input_port/output_portの判定方法だけが異なる
-                - Moduledefのls_input/ls_outputを逆引きするか
-                - 推測(module名とport名に基づく) 
-                -> 関数ポインタとして渡してやれば良い
+          for loader in (parent_module,output):
+            if driver is sub_module.output?:
+                -> edgeをprint()
 
-        for i in (all instance)：
-            [1] if モジュール定義があるinstance
-            for p in (all input/output_port)：
-                if p is input_port:
-                    [1] ```process for input_port```
-                    [1-1] if 接続先 is Const?
-                       -> 判定：inputport, edgeをprint()してcontinue
-                    [1-2] if 接続先 is Parent_Moduleのinput_port?
-                       -> 判定：inputport, edgeをprint()してcontinue
-                    [1-3] if 接続先 is other instanceのoutput_port?
-                       -> 判定：input_port, edgeをprint()してcontinue
-                else:
-                    pass
-
-            [2] else (モジュール定義がないinstance)
-            for p in (all input/output_port)：
-               (同上, input_port/output_portの判定方法だけが異なる
-                - Moduledefのls_input/ls_outputを逆引きするか
-                - 推測(module名とport名に基づく) 
-                -> 関数ポインタとして渡してやれば良い
+          for loader in (submodule.input):
+            if driver is Constant?:
+            if driver is parent_module.input?:
+            if driver is sub_module.output?:
+                -> edgeをprint()
         """
 
-        """submodule.output_port"""
-        for i in self.ls_instance:
-            module_def = get_module_def(i, ls_module)
-            if module_def == None:
-                is_output_port = is_output_port_estimate
-            else:
-                is_output_port = is_output_port_with_module_def
-            for p in i.portlist:
-                if not is_output_port(p, i, module_def):
-                    continue
+        """for loader in (parent_module,output):"""
+        for o in self.ls_output:
+            """if driver is sub_module.output?:"""
+            for i in self.ls_instance:
+                module_def = get_module_def(i, ls_module)
+                if module_def == None:
+                    is_output_port = is_output_port_estimate
                 else:
-                    s_node_name = prefix + "_" + i.name + "_" + p.portname
-                    br_node_name = s_node_name + "_output_br"
-                    print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
-                    print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
-                assert(hasattr(p, 'argname'))
-                if isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect):
-                    arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
-                    ll = [i for i in self.ls_output if i.name == arg_wire_name]
-                    assert (len(ll) == 1 or len(ll) == 0), "fuck"
-                    if (len(ll) == 1):
-                        d_node_name = prefix + "_" + ll[0].name
-                        print ("%s -> %s[label = \"%s\"];"%(br_node_name, d_node_name, "")) 
-                        continue
+                    is_output_port = is_output_port_with_module_def
+                for p in i.portlist:
+                    assert(hasattr(p, 'argname'))
+                    if is_output_port(p, i, module_def):
+                        assert(isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect))
+                        arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
+                        if o.name == arg_wire_name:
+                            s_node_name = prefix + "_" + i.name + "_" + p.portname + "_output_br"
+                            d_node_name = prefix + "_" + o.name
+                            print ("%s -> %s[label = \"%s\"];"%(s_node_name, d_node_name, "")) 
 
-        """submodule.input_port"""
+        """for loader in (submodule.input):"""
         for i in self.ls_instance:
             module_def = get_module_def(i, ls_module)
             if module_def == None:
@@ -259,9 +230,8 @@ def gen_dot(self, ls_module, prefix=''):
             for p in i.portlist:
                 assert(hasattr(p, 'argname'))
                 if not is_output_port(p, i, module_def):
-                    """[1] ```process for input_port```"""
                     if isinstance(p.argname, IntConst):
-                        """[1-1] if 接続先 is Const?"""
+                        """if driver is Constant?:"""
                         ### TODO:bit幅チェック
                         const_value = p.argname.value
                         const_node_name = prefix + "_const_" + i.name + p.portname
@@ -269,8 +239,7 @@ def gen_dot(self, ls_module, prefix=''):
                         print_connect(const_node_name, prefix, i, p)
                         continue
                     elif isinstance(p.argname, Identifier) or isinstance(p.argname, Partselect):
-                        """[1-2] if 接続先 is Parent_Moduleのinput_port?"""
-                        """[1-3] if 接続先 is other instanceのoutput_port?"""
+                        """if driver is parent_module.input?:"""
                         arg_wire_name = p.argname.name if isinstance(p.argname, Identifier) else p.argname.var.name
                         ll = [i for i in self.ls_input if i.name == arg_wire_name]
                         assert (len(ll) == 1 or len(ll) == 0), "fuck"
@@ -278,6 +247,7 @@ def gen_dot(self, ls_module, prefix=''):
                             br_node_name = prefix + "_" + ll[0].name + "_input_br"
                             print_connect(br_node_name, prefix, i, p)
                             continue
+                        """if driver is sub_module.output?:"""
                         for ii in self.ls_instance:
                             if i is ii:
                                 continue
@@ -309,23 +279,25 @@ def gen_dot(self, ls_module, prefix=''):
 
         Instance.id_ += 1
         module_def = get_module_def(self, ls_module)
-        if not module_def == None:
-            prefix += "_" + self.name
-            module_def.gen_dot(ls_module, prefix)
-        else:
+        if module_def is None:
             for p in self.portlist:
                 assert(hasattr(p, 'argname'))
                 node_label = p.portname
                 node_name = prefix + "_" + self.name + "_" + node_label
                 print ("%s[label = \"%s\", style = \"rounded,filled\"];"%(node_name, node_label))
-                """
-                if is_output_port_estimate(p, self, None):
-                    s_node_name = node_name
-                    br_node_name = s_node_name + "_output_br"
-                    print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
-                    print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
-                """
+            is_output_port = is_output_port_estimate
+        else:
+            module_def.gen_dot(ls_module, prefix + "_" + self.name)
+            is_output_port = is_output_port_with_module_def
         print ('}')
+
+        for p in self.portlist:
+            assert(hasattr(p, 'argname'))
+            if is_output_port(p, self, module_def):
+                s_node_name = prefix + "_" + self.name + "_" + p.portname
+                br_node_name = s_node_name + "_output_br"
+                print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
+                print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
         return
 
     else:
