@@ -23,30 +23,6 @@ def debug(x):
     print(x, file=sys.stderr, end=' ')
     return
 
-def module_tree(self, buf=sys.stdout, offset=0, showlineno=True):
-    indent = 2
-    lead = ' ' * offset
-
-    if (self.__class__.__name__== 'ModeleDef'
-     or self.__class__.__name__== 'ModuleDef'
-      ):
-        buf.write(lead + self.__class__.__name__ + ': ')
-
-        if self.attr_names:
-            if True:
-                nvlist = [(n, getattr(self, n)) for n in self.attr_names]
-                attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
-            buf.write(attrstr)
-
-        if showlineno:
-            buf.write(' (at %s)' % self.lineno)
-
-        buf.write('\n')
-
-    for c in self.children():
-        c.module_tree(buf, offset + indent, showlineno)
-
-
 def get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
 
     indent = 2
