@@ -276,8 +276,9 @@ def gen_dot(self, ls_module, prefix=''):
         print ('subgraph cluster%d {'%Instance.id_)
         print ("  graph [label = \"%s:%s\"];"%(self.module, self.name))
         print ("tmp%d[width=0.0, height=0.0, shape=point];"%Instance.id_)
-
+        current_instance_id = Instance.id_
         Instance.id_ += 1
+
         module_def = get_module_def(self, ls_module)
         if module_def is None:
             for p in self.portlist:
@@ -297,7 +298,9 @@ def gen_dot(self, ls_module, prefix=''):
                 s_node_name = prefix + "_" + self.name + "_" + p.portname
                 br_node_name = s_node_name + "_output_br"
                 print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
-                print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
+                print ("%s -> %s[dir = none, weight = 10];"%(s_node_name, br_node_name))
+                """dummy edge for dot layout"""
+                print ("tmp%d -> %s[dir = none, style=invis, weight = 0, labelfloat = true];"%(current_instance_id, s_node_name))
         return
 
     else:
