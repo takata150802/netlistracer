@@ -130,6 +130,19 @@ def gen_dot(self, ls_module, prefix=''):
                 return True
         return False
 
+    def is_ignore_trace_port(p, i):
+        assert (isinstance(p, PortArg))
+        assert (isinstance(i, Instance))
+        portname = p.portname
+        modulename = i.module
+
+        """pを配線関数のtrace対象外と判断する条件"""
+        if portname == 'clock' or portname == 'clk' or portname == 'CLOCK' or portname == 'CLK':
+            return True
+        if portname == 'reset' or portname == 'rst' or portname == 'RESET' or portname == 'RST':
+            return True
+        return False
+
     def print_connect(src_node_name, prefix, instance, port, wire_name=" "):
         d_prefix = prefix + "_" + instance.name
         d_node_name = d_prefix + "_" + port.portname
@@ -229,6 +242,8 @@ def gen_dot(self, ls_module, prefix=''):
                 is_output_port = is_output_port_with_module_def
             for p in i.portlist:
                 assert(hasattr(p, 'argname'))
+                if is_ignore_trace_port(p, i):
+                    continue
                 if not is_output_port(p, i, module_def):
                     if isinstance(p.argname, IntConst):
                         """if driver is Constant?:"""
