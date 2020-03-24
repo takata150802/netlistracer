@@ -306,20 +306,23 @@ def gen_dot(self, ls_module, prefix=''):
         print ("tmp%d[width=0.0, height=0.0, shape=point];"%Instance.id_)
 
         Instance.id_ += 1
-        ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == self.module]
-        debug("ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == self.module]:")
-        debug(ll)
-        debug(self.module)
-        debug('\n')
-        emsg = "\n" \
-             + "multiple declear of module `" + str(self.module) + "` is detected.\n" \
-             + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
-        assert (len(ll) == 1 or len(ll) == 0), emsg
-        if len(ll) == 1:
+        module_def = get_module_def(self, ls_module)
+        if not module_def == None:
             prefix += "_" + self.name
-            ll[0].gen_dot(ls_module, prefix)
-        else :
-            pass
+            module_def.gen_dot(ls_module, prefix)
+        else:
+            for p in self.portlist:
+                assert(hasattr(p, 'argname'))
+                node_label = p.portname
+                node_name = prefix + "_" + self.name + "_" + node_label
+                print ("%s[label = \"%s\", style = \"rounded,filled\"];"%(node_name, node_label))
+                """
+                if is_output_port_estimate(p, self, None):
+                    s_node_name = node_name
+                    br_node_name = s_node_name + "_output_br"
+                    print ("%s -> %s[dir = none];"%(s_node_name, br_node_name))
+                    print ("%s[width=0.01, height=0.01, shape=point];"%br_node_name)
+                """
         print ('}')
         return
 
