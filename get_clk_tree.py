@@ -354,13 +354,6 @@ def main():
         for i in m.ls_instance:
             i.ls_port = []
             i.get_node(lambda x: isinstance(x, PortArg), ret=i.ls_port)
-    print (gen_dot_header)
-    ls_module[0].gen_dot(ls_module)
-    for i in ls_module[0].ls_input:
-        print ("{rank = min; _%s;}"%i.name)
-    for i in ls_module[0].ls_output:
-        print ("{rank = max; _%s;}"%i.name)
-    print (gen_dot_footer)
-    
+
 if __name__ == '__main__':
     main()
