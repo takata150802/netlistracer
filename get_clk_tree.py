@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pyverilog.utils.version
 from pyverilog.vparser.parser import parse
 
+from pyverilog.vparser.ast import Source
 from pyverilog.vparser.ast import Node
 from pyverilog.vparser.ast import ModuleDef
 from pyverilog.vparser.ast import Instance
@@ -23,7 +24,41 @@ def debug(x):
     print(x, file=sys.stderr, end=' ')
     return
 
-def get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
+class NetlistHier(object):
+    dev_null = open(os.devnull, 'w')
+    def __init__(self, ast):
+        assert(isinstance(ast, Source))
+        self.ast = ast
+        self._get_hier()
+
+    def _get_hier(self):
+        self.ls_module = []
+        self.ast.get_node(lambda x: isinstance(x, ModuleDef), buf=NetlistHier.dev_null, ret=self.ls_module)
+        self.top_module = self.ls_module[0]
+        self._get_hier_module_def(self.top_module)
+
+    def _get_hier_module_def(self, module_def):
+        assert(isinstance(module_def, ModuleDef))
+        module_def.ls_input = []
+        module_def.ls_output = []
+        module_def.ls_instance = []
+        module_def.get_node(lambda x: isinstance(x, Input), buf=NetlistHier.dev_null, ret=module_def.ls_input)
+        module_def.get_node(lambda x: isinstance(x, Output), buf=NetlistHier.dev_null, ret=module_def.ls_output)
+        module_def.get_node(lambda x: isinstance(x, Instance), buf=NetlistHier.dev_null, ret=module_def.ls_instance)
+        for i in module_def.ls_instance:
+            i.ls_port = []
+            i.get_node(lambda x: isinstance(x, PortArg), buf=NetlistHier.dev_null, ret=i.ls_port)
+            i.module_def = get_module_def(i, self.ls_module)
+            if i.module_def is not None:
+                self._get_hier_module_def(i.module_def)
+        return
+
+    def show_hier(self, buf=sys.stderr, offset=0, showlineno=True):
+        self.top_module.show_hier(buf, offset, False, showlineno)
+        return
+
+""" custum mothod injection to Pyverilog"""
+def _get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
 
     indent = 2
     lead = ' ' * offset
@@ -43,6 +78,54 @@ def get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
     for c in self.children():
         c.get_node(fn, buf, offset + indent, showlineno, ret)
     return ret
+Node.get_node= _get_node
+
+def get_module_def(inst, ls_module):
+    assert (isinstance(inst, Instance))
+    emsg = "\n" \
+         + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
+         + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
+    ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
+    assert (len(ll) == 1 or len(ll) == 0), emsg
+    if len(ll) == 1:
+        return ll[0]
+    else :
+        return None
+
+""" custum mothod injection to Pyverilog"""
+def _show_hier(self, buf=sys.stdout, offset=0, attrnames=False, showlineno=True):
+    indent = 2
+    lead = ' ' * offset
+
+    buf.write(lead + self.__class__.__name__ + ': ')
+
+    if self.attr_names:
+        if attrnames:
+            nvlist = [(n, getattr(self, n)) for n in self.attr_names]
+            attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
+        else:
+            vlist = [getattr(self, n) for n in self.attr_names]
+            attrstr = ', '.join('%s' % v for v in vlist)
+        buf.write(attrstr)
+
+    if showlineno:
+        buf.write(' (at %s)' % self.lineno)
+
+    buf.write('\n')
+    if isinstance(self, ModuleDef):
+        for i in self.ls_input:
+            i.show_hier(buf, offset + indent, attrnames, showlineno)
+        for i in self.ls_output:
+            i.show_hier(buf, offset + indent, attrnames, showlineno)
+        for i in self.ls_instance:
+            i.show_hier(buf, offset + indent, attrnames, showlineno)
+    if isinstance(self, Instance):
+            for i in self.ls_port:
+                i.show_hier(buf, offset + indent, attrnames, showlineno)
+            if self.module_def is not None:
+                self.module_def.show_hier(buf, offset + indent, attrnames, showlineno)
+    return
+Node.show_hier = _show_hier
 
 gen_dot_header = \
 """
@@ -337,52 +420,13 @@ def main():
     if len(filelist) == 0:
         showVersion()
 
-    Node.get_node= get_node
     Node.gen_dot = gen_dot
     ast, directives = parse(filelist,
                             preprocess_include=options.include,
                             preprocess_define=options.define)
-    dev_null = open(os.devnull, 'w')
-    ls_module = []
-    ast.get_node(lambda x: isinstance(x, ModuleDef), buf=dev_null ,ret=ls_module)
-    for m in ls_module:
-        m.ls_input = []
-        m.ls_output = []
-        m.ls_instance = []
-        m.get_node(lambda x: isinstance(x, Input), buf=dev_null ,ret=m.ls_input)
-        m.get_node(lambda x: isinstance(x, Output), buf=dev_null ,ret=m.ls_output)
-        m.get_node(lambda x: isinstance(x, Instance), buf=dev_null ,ret=m.ls_instance)
-        for i in m.ls_instance:
-            i.module_def = get_module_def(i, ls_module)
-            i.ls_port = []
-            i.get_node(lambda x: isinstance(x, PortArg), buf=dev_null ,ret=i.ls_port)
+    netlist_hier =  NetlistHier(ast)
+    netlist_hier.show_hier()
 
-    for m in ls_module:
-        debug("module: " + m.name + "\n")
-        debug("- instance: ")
-        for i in m.ls_instance:
-            debug(i.name + ":" + i.module_def.name)
-        debug("\n")
-        debug("- input_port: ")
-        for i in m.ls_input:
-            debug(i.name)
-        debug("\n")
-        debug("- output_port: ")
-        for i in m.ls_output:
-            debug(i.name)
-        debug("\n")
-
-def get_module_def(inst, ls_module):
-    assert (isinstance(inst, Instance))
-    emsg = "\n" \
-         + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
-         + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
-    ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
-    assert (len(ll) == 1 or len(ll) == 0), emsg
-    if len(ll) == 1:
-        return ll[0]
-    else :
-        return None
 
 if __name__ == '__main__':
     main()
