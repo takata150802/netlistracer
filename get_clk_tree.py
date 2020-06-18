@@ -71,7 +71,7 @@ def gen_dot(self, ls_module, prefix=''):
     debug('\n')
 
     def get_module_def(inst, ls_module):
-        assert (inst, Instance)
+        assert (isinstance(inst, Instance))
         emsg = "\n" \
              + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
              + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
