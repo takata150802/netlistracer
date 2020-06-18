@@ -143,7 +143,7 @@ def gen_dot(self, ls_module, prefix=''):
                 node_label += "[%s:%s]"%(msb,lsb)
             print ("%s[label = \"%s\", style = \"rounded,filled\"];"%(node_name, node_label))
         """
-        self(Moduledef) input port(s) dummy node(branch)
+        self(ModuleDef) input port(s) dummy node(branch)
         """
         for i in self.ls_input:
             s_node_name = prefix + "_" + i.name
@@ -342,18 +342,47 @@ def main():
     ast, directives = parse(filelist,
                             preprocess_include=options.include,
                             preprocess_define=options.define)
+    dev_null = open(os.devnull, 'w')
     ls_module = []
-    ast.get_node(lambda x: isinstance(x, ModuleDef), ret=ls_module)
+    ast.get_node(lambda x: isinstance(x, ModuleDef), buf=dev_null ,ret=ls_module)
     for m in ls_module:
         m.ls_input = []
         m.ls_output = []
         m.ls_instance = []
-        m.get_node(lambda x: isinstance(x, Input), ret=m.ls_input)
-        m.get_node(lambda x: isinstance(x, Output), ret=m.ls_output)
-        m.get_node(lambda x: isinstance(x, Instance), ret=m.ls_instance)
+        m.get_node(lambda x: isinstance(x, Input), buf=dev_null ,ret=m.ls_input)
+        m.get_node(lambda x: isinstance(x, Output), buf=dev_null ,ret=m.ls_output)
+        m.get_node(lambda x: isinstance(x, Instance), buf=dev_null ,ret=m.ls_instance)
         for i in m.ls_instance:
+            i.module_def = get_module_def(i, ls_module)
             i.ls_port = []
-            i.get_node(lambda x: isinstance(x, PortArg), ret=i.ls_port)
+            i.get_node(lambda x: isinstance(x, PortArg), buf=dev_null ,ret=i.ls_port)
+
+    for m in ls_module:
+        debug("module: " + m.name + "\n")
+        debug("- instance: ")
+        for i in m.ls_instance:
+            debug(i.name + ":" + i.module_def.name)
+        debug("\n")
+        debug("- input_port: ")
+        for i in m.ls_input:
+            debug(i.name)
+        debug("\n")
+        debug("- output_port: ")
+        for i in m.ls_output:
+            debug(i.name)
+        debug("\n")
+
+def get_module_def(inst, ls_module):
+    assert (isinstance(inst, Instance))
+    emsg = "\n" \
+         + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
+         + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
+    ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
+    assert (len(ll) == 1 or len(ll) == 0), emsg
+    if len(ll) == 1:
+        return ll[0]
+    else :
+        return None
 
 if __name__ == '__main__':
     main()
