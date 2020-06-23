@@ -48,19 +48,19 @@ class NetlistHier(object):
         for i in module_def.ls_instance:
             i.ls_port = []
             i.get_node(lambda x: isinstance(x, PortArg), buf=NetlistHier.dev_null, ret=i.ls_port)
-            i.module_def = self.get_module_def(i, self.ls_module)
+            i.module_def = self.get_module_def(i)
             if i.module_def is None:
                 i.module_def = self._create_dummy_module_def(i)
             else:
                 self._get_hier_module_def(i.module_def)
         return
 
-    def get_module_def(self, inst, ls_module):
+    def get_module_def(self, inst):
         assert (isinstance(inst, Instance))
         emsg = "\n" \
              + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
              + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
-        ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
+        ll = [i for i in self.ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
         assert (len(ll) == 1 or len(ll) == 0), emsg
         if len(ll) == 1:
             return ll[0]
