@@ -108,7 +108,8 @@ class NetlistHier(object):
         return False
 
     def show_hier(self, buf=sys.stderr, offset=0, showlineno=True):
-        self.top_module.show_hier(buf, offset, False, showlineno)
+        visitor = ShowHierVisitor()
+        visitor.visit(self.top_module, offset=0)
         return
 
 """ custum mothod injection to Pyverilog"""
@@ -134,43 +135,77 @@ def _get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
     return ret
 Node.get_node= _get_node
 
-""" custum mothod injection to Pyverilog"""
-def _show_hier(self, buf=sys.stdout, offset=0, attrnames=False, showlineno=True):
-    indent = 2
-    lead = ' ' * offset
+class ShowHierVisitor(object):
+    def __init__(self, indent=2, buf=sys.stderr, attrnames=False, showlineno=True):
+        self.indent = indent
+        self.buf = buf
+        self.attrnames = attrnames
+        self.showlineno = showlineno
+        return
 
-    buf.write(lead + self.__class__.__name__ + ': ')
+    def visit(self, node, offset=0):
+        getattr(self, 'visit_' + node.__class__.__name__)(node, offset)
+        return
 
-    if self.attr_names:
-        if attrnames:
-            nvlist = [(n, getattr(self, n)) for n in self.attr_names]
-            attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
-        else:
-            vlist = [getattr(self, n) for n in self.attr_names]
-            attrstr = ', '.join('%s' % v for v in vlist)
-        buf.write(attrstr)
+    def visit_ModuleDef(self, node, offset):
+        self._visit_xxx(node, offset)
+        """recursive call"""
+        for i in node.ls_input:
+            self.visit(i, offset + self.indent)
+        for i in node.ls_output:
+            self.visit(i, offset + self.indent)
+        for i in node.ls_instance:
+            self.visit(i, offset + self.indent)
+        return
 
-    if showlineno:
-        buf.write(' (at %s)' % self.lineno)
+    def visit_Input(self, node, offset):
+        self._visit_xxx(node, offset)
+        """recursive call"""
+        pass
+        return
 
-    buf.write('\n')
-    if isinstance(self, ModuleDef):
-        for i in self.ls_input:
-            i.show_hier(buf, offset + indent, attrnames, showlineno)
-        for i in self.ls_output:
-            i.show_hier(buf, offset + indent, attrnames, showlineno)
-        for i in self.ls_instance:
-            i.show_hier(buf, offset + indent, attrnames, showlineno)
-    if isinstance(self, Instance):
-            for i in self.ls_port:
-                i.show_hier(buf, offset + indent, attrnames, showlineno)
-            if self.module_def is not None:
-                self.module_def.show_hier(buf, offset + indent, attrnames, showlineno)
-    if isinstance(self, PortArg):
-        for c in self.children():
-            c.show(buf, offset + indent, attrnames, showlineno)
-    return
-Node.show_hier = _show_hier
+    def visit_Output(self, node, offset):
+        self._visit_xxx(node, offset)
+        """recursive call"""
+        pass
+        return
+
+    def visit_Instance(self, node, offset):
+        self._visit_xxx(node, offset)
+        """recursive call"""
+        for i in node.ls_port:
+            self.visit(i, offset + self.indent)
+        if node.module_def is not None:
+            self.visit(node.module_def, offset + self.indent)
+        return
+
+    def visit_PortArg(self, node, offset):
+        self._visit_xxx(node, offset)
+        """recursive call"""
+        """NOTE: PortArg.show() is a Pyverilog's method"""
+        for c in node.children():
+            c.show(self.buf, offset + self.indent, self.attrnames, self.showlineno)
+        return
+
+    def _visit_xxx(self, node, offset):
+        lead = ' ' * offset
+    
+        self.buf.write(lead + node.__class__.__name__ + ': ')
+    
+        if node.attr_names:
+            if self.attrnames:
+                nvlist = [(n, getattr(node, n)) for n in node.attr_names]
+                attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
+            else:
+                vlist = [getattr(node, n) for n in node.attr_names]
+                attrstr = ', '.join('%s' % v for v in vlist)
+            self.buf.write(attrstr)
+    
+        if self.showlineno:
+            self.buf.write(' (at %s)' % node.lineno)
+    
+        self.buf.write('\n')
+        return
 
 def hasattr_parents(obj, attrs):
     assert (isinstance(attrs, str))
