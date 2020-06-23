@@ -48,10 +48,64 @@ class NetlistHier(object):
         for i in module_def.ls_instance:
             i.ls_port = []
             i.get_node(lambda x: isinstance(x, PortArg), buf=NetlistHier.dev_null, ret=i.ls_port)
-            i.module_def = get_module_def(i, self.ls_module)
-            if i.module_def is not None:
+            i.module_def = self.get_module_def(i, self.ls_module)
+            if i.module_def is None:
+                i.module_def = self._create_dummy_module_def(i)
+            else:
                 self._get_hier_module_def(i.module_def)
         return
+
+    def get_module_def(self, inst, ls_module):
+        assert (isinstance(inst, Instance))
+        emsg = "\n" \
+             + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
+             + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
+        ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
+        assert (len(ll) == 1 or len(ll) == 0), emsg
+        if len(ll) == 1:
+            return ll[0]
+        else :
+            return None
+
+    def _create_dummy_module_def(self, inst):
+        assert (isinstance(inst, Instance))
+        ret = ModuleDef(name=inst.module,
+                        paramlist=None,
+                        portlist=None,
+                        items=None,
+                        default_nettype='wire', lineno=-1)
+        ret.ls_input = []
+        ret.ls_output = []
+        ret.ls_instance = []
+        for p in inst.ls_port:
+            if self._is_output_port_estimate(p, inst):
+                ret.ls_output.append(Output(name=p.portname,
+                                           width=None, 
+                                           signed=False,
+                                           dimensions=None,
+                                           lineno=-1))
+            else:
+                ret.ls_input.append(Input(name=p.portname,
+                                           width=None, 
+                                           signed=False,
+                                           dimensions=None,
+                                           lineno=-1))
+        return ret
+     
+    def _is_output_port_estimate(self, p, i):
+        assert (isinstance(p, PortArg))
+        assert (isinstance(i, Instance))
+
+        """pがoutput_portだと推測できる条件"""
+        portname = p.portname
+        modulename = i.module
+        if modulename == "dummy" and portname[0:2] == 'out':
+            return True
+        if portname[0] == 'o':
+            return True
+        if portname[0] == 'q':
+            return True
+        return False
 
     def show_hier(self, buf=sys.stderr, offset=0, showlineno=True):
         self.top_module.show_hier(buf, offset, False, showlineno)
@@ -79,18 +133,6 @@ def _get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
         c.get_node(fn, buf, offset + indent, showlineno, ret)
     return ret
 Node.get_node= _get_node
-
-def get_module_def(inst, ls_module):
-    assert (isinstance(inst, Instance))
-    emsg = "\n" \
-         + "multiple declear of module `" + str(inst.module) + "` is detected.\n" \
-         + "but this check is NOT enough 'cause of TOP module multiple declear.\n"
-    ll = [i for i in ls_module if isinstance(i, ModuleDef) and i.name == inst.module]
-    assert (len(ll) == 1 or len(ll) == 0), emsg
-    if len(ll) == 1:
-        return ll[0]
-    else :
-        return None
 
 """ custum mothod injection to Pyverilog"""
 def _show_hier(self, buf=sys.stdout, offset=0, attrnames=False, showlineno=True):
@@ -124,6 +166,9 @@ def _show_hier(self, buf=sys.stdout, offset=0, attrnames=False, showlineno=True)
                 i.show_hier(buf, offset + indent, attrnames, showlineno)
             if self.module_def is not None:
                 self.module_def.show_hier(buf, offset + indent, attrnames, showlineno)
+    if isinstance(self, PortArg):
+        for c in self.children():
+            c.show(buf, offset + indent, attrnames, showlineno)
     return
 Node.show_hier = _show_hier
 
@@ -379,6 +424,7 @@ def gen_dot(self, ls_module, prefix=''):
 
     else:
         return
+Node.gen_dot = gen_dot
 
 def hasattr_parents(obj, attrs):
     assert (isinstance(attrs, str))
@@ -420,7 +466,6 @@ def main():
     if len(filelist) == 0:
         showVersion()
 
-    Node.gen_dot = gen_dot
     ast, directives = parse(filelist,
                             preprocess_include=options.include,
                             preprocess_define=options.define)
