@@ -32,22 +32,18 @@ class NetlistHier(object):
         self._get_hier()
 
     def _get_hier(self):
-        self.ls_module = []
-        self.ast.get_node(lambda x: isinstance(x, ModuleDef), buf=NetlistHier.dev_null, ret=self.ls_module)
+        self.ls_module = self.get_node(self.ast, lambda x: isinstance(x, ModuleDef))
         self.top_module = self.ls_module[0]
         self._get_hier_module_def(self.top_module)
 
     def _get_hier_module_def(self, module_def):
         assert(isinstance(module_def, ModuleDef))
-        module_def.ls_input = []
-        module_def.ls_output = []
-        module_def.ls_instance = []
-        module_def.get_node(lambda x: isinstance(x, Input), buf=NetlistHier.dev_null, ret=module_def.ls_input)
-        module_def.get_node(lambda x: isinstance(x, Output), buf=NetlistHier.dev_null, ret=module_def.ls_output)
-        module_def.get_node(lambda x: isinstance(x, Instance), buf=NetlistHier.dev_null, ret=module_def.ls_instance)
+        module_def.ls_input = self.get_node(module_def, lambda x: isinstance(x, Input))
+        module_def.ls_output = self.get_node(module_def, lambda x: isinstance(x, Output))
+        module_def.ls_instance = self.get_node(module_def, lambda x: isinstance(x, Instance))
         for i in module_def.ls_instance:
             i.ls_port = []
-            i.get_node(lambda x: isinstance(x, PortArg), buf=NetlistHier.dev_null, ret=i.ls_port)
+            i.ls_port = self.get_node(i, lambda x: isinstance(x, PortArg))
             i.module_def = self.get_module_def(i)
             if i.module_def is None:
                 i.module_def = self._create_dummy_module_def(i)
@@ -107,33 +103,46 @@ class NetlistHier(object):
             return True
         return False
 
+    def get_node(self, node, fn):
+        visitor = GetNodeVisitor(fn)
+        visitor.visit(node)
+        return visitor.get_result()
+
+
     def show_hier(self, buf=sys.stderr, offset=0, showlineno=True):
         visitor = ShowHierVisitor()
         visitor.visit(self.top_module, offset=0)
         return
 
-""" custum mothod injection to Pyverilog"""
-def _get_node(self, fn, buf=sys.stderr, offset=0, showlineno=True, ret=[]):
-
-    indent = 2
-    lead = ' ' * offset
-    
-    if (fn(self)):
-        ret.append(self)
-        buf.write(lead + self.__class__.__name__ + ': ')
-        if self.attr_names:
-            nvlist = [(n, getattr(self, n)) for n in self.attr_names]
-            attrstr = ', '.join('%s=%s' % (n, v) for (n, v) in nvlist)
-            buf.write(attrstr)
-        if showlineno:
-            buf.write(' (at %s)' % self.lineno)
-        buf.write('\n')
+class GetNodeVisitor(object):
+    def __init__(self, fn, debug=False):
+        self.fn = fn
+        self.debug= debug
+        self.ret= []
         return
 
-    for c in self.children():
-        c.get_node(fn, buf, offset + indent, showlineno, ret)
-    return ret
-Node.get_node= _get_node
+    def visit(self, node):
+        ### getattr(self, 'visit_' + node.__class__.__name__)(node, offset)
+        self._visit_xxx(node)
+        self._visit_xxx_recursive_call(node)
+        return
+
+    def _visit_xxx(self, node):
+        if (self.fn(node)):
+            self.ret.append(node)
+        return
+
+    def _visit_xxx_recursive_call(self, node):
+        for c in node.children():
+            self.visit(c)
+        return
+
+    def get_result(self):
+        ### WANING: THIS IS NOT DEEP COPY
+        from copy import copy as cp
+        ret = cp(self.ret)
+        self.ret = []
+        return ret
 
 class ShowHierVisitor(object):
     def __init__(self, indent=2, buf=sys.stderr, attrnames=False, showlineno=True):
