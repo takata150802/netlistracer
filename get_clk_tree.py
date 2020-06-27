@@ -79,16 +79,16 @@ class NetlistHier(object):
         ret.ls_instance = []
         for p in inst.ls_port:
             if self._is_output_port_estimate(p, inst):
-                ret.ls_output.append(Output(name=p.portname,
-                                           width=None, 
-                                           signed=False,
-                                           dimensions=None,
+                ret.ls_output.append(output(name=p.portname,
+                                           width=none, 
+                                           signed=false,
+                                           dimensions=none,
                                            lineno=-1))
             else:
-                ret.ls_input.append(Input(name=p.portname,
-                                           width=None, 
-                                           signed=False,
-                                           dimensions=None,
+                ret.ls_input.append(input(name=p.portname,
+                                           width=none, 
+                                           signed=false,
+                                           dimensions=none,
                                            lineno=-1))
         ret.is_dummy_module_def = True
         return ret
