@@ -22,6 +22,7 @@ from pyverilog.vparser.ast import Partselect
 from pyverilog.vparser.ast import IntConst
 from getnodevisitor import GetNodeVisitor
 from showhiervisitor import ShowHierVisitor
+from netlisttracevisitor import ModuleNetTraceVisitor
 
 def debug(x):
     print(x, file=sys.stderr, end=' ')
@@ -89,6 +90,7 @@ class NetlistHier(object):
                                            signed=False,
                                            dimensions=None,
                                            lineno=-1))
+        ret.is_dummy_module_def = True
         return ret
      
     def _is_output_port_estimate(self, p, i):
@@ -115,6 +117,11 @@ class NetlistHier(object):
     def show_hier(self, buf=sys.stderr, offset=0, showlineno=True):
         visitor = ShowHierVisitor()
         visitor.visit(self.top_module, offset=0)
+        return
+
+    def trace(self):
+        visitor = ModuleNetTraceVisitor()
+        visitor.visit(self.top_module)
         return
 
 def hasattr_parents(obj, attrs):
@@ -162,6 +169,7 @@ def main():
                             preprocess_define=options.define)
     netlist_hier =  NetlistHier(ast)
     netlist_hier.show_hier()
+    netlist_hier.trace()
 
 
 if __name__ == '__main__':
