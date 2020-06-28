@@ -7,7 +7,7 @@ class GetNodeVisitor(object):
         return
 
     def visit(self, node):
-        assert(isinstance(node, Node))
+        assert(isinstance(node, Node)), node
         ### getattr(self, 'visit_' + node.__class__.__name__)(node, offset)
         self._visit_xxx(node)
         self._visit_xxx_recursive_call(node)

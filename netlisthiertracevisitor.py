@@ -149,7 +149,7 @@ class DummyModuleDefTraceVisitor(BaseTraceVisitor):
                 b.ls_loader = all_outputs
         for p in node.dct_output.values():
             for b in p.bit.values():
-                b.ls_driver = all_outputs
+                b.ls_driver = all_inputs
         return
 
 class ModuleOutputTraceVisitor(BaseTraceVisitor):
