@@ -77,6 +77,8 @@ class InstanceGetPortArgWireVisitor(BaseTraceVisitor):
             visitor.visit(node.argname)
         if isinstance(node.argname, PyVPartselect):
             visitor.visit(node.argname)
+        if isinstance(node.argname, PyVPoiner):
+            visitor.visit(node.argname)
         if isinstance(node.argname, PyVIdentifier):
             visitor.visit(node.argname)
         if node.argname == None:
