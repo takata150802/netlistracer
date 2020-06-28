@@ -7,8 +7,10 @@ class NetListHierTraceVisitor(object):
     def visit(visitor, node):
         visitor1st = InstanceGetPortArgWireVisitor()
         visitor2nd = DummyModuleDefTraceVisitor()
+        visitor3rd = ModuleOutputTraceVisitor()
         visitor1st.visit(node)
         visitor2nd.visit(node)
+        visitor3rd.visit(node)
         return
 
 class BaseTraceVisitor(object):
@@ -49,11 +51,16 @@ class InstanceGetPortArgWireVisitor(BaseTraceVisitor):
             dct_wire_name_bit = visitor.visit(p)
             portname = p.portname
             if portname in node.dct_input:
-                for i in range(len(dct_wire_name_bit)):
-                    dst = node.dct_input[portname].bit[i]
-                    src = dct_wire_name_bit[i]
-                    dst.wire_name = src["name"]
-                    dst.wire_bit  = src["bit"]
+                dct_xxx = node.dct_input
+            elif portname in node.dct_output:
+                dct_xxx = node.dct_output
+            else:
+                continue
+            for i in range(len(dct_wire_name_bit)):
+                dst = dct_xxx[portname].bit[i]
+                src = dct_wire_name_bit[i]
+                dst.wire_name = src["name"]
+                dst.wire_bit  = src["bit"]
         """recursive call"""
         visitor.visit(node.module_def)
         return
@@ -141,5 +148,18 @@ class DummyModuleDefTraceVisitor(BaseTraceVisitor):
         for p in node.dct_output.values():
             for b in p.bit.values():
                 b.ls_driver = all_outputs
+        return
+
+class ModuleOutputTraceVisitor(BaseTraceVisitor):
+    def visit_ModuleDef(visitor, node):
+        for mod_o in node.dct_output.values():
+            for mod_o_bitnum in mod_o.bit.keys():
+                for i in node.dct_instance.values():
+                    for inst_o in i.dct_output.values():
+                        for inst_o_b in inst_o.bit.values():
+                            if mod_o.name == inst_o_b.wire_name and \
+                               mod_o_bitnum == inst_o_b.wire_bit:
+                               mod_o.bit[mod_o_bitnum].ls_driver.append(inst_o_b)
+                               inst_o_b.ls_loader.append(mod_o.bit[mod_o_bitnum])
         return
 

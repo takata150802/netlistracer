@@ -162,6 +162,6 @@ class Bit(NetListHierObject):
     def __init__(self):
         self.wire_name = None
         self.wire_bit = None
-        self.ls_loder = []
-        self.ls_dirver = []
+        self.ls_loader = []
+        self.ls_driver= []
         return
