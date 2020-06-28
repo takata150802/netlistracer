@@ -14,6 +14,7 @@ from utils import get_node
 import sys
 from showhiervisitor import ShowHierVisitor
 from netlisthiertracevisitor import NetListHierTraceVisitor
+from showtracevisitor import ShowTraceVisitor
 
 class NetListHier(object):
     def __init__(self, ast, top_module_name=False):
@@ -49,24 +50,40 @@ class NetListHier(object):
         visitor.visit(self.top_module)
         return
 
+    def show_trace(self):
+        visitor = ShowTraceVisitor()
+        visitor.visit(self.top_module)
+        return
+
+from copy import deepcopy as cp
 class NetListHierObject(object):
     ls_pyvmodule_def = []
     ls_module_def = []
     def __init__(self, ls_pyvmodule_def):
         NetListHierObject.ls_pyvmodule_def = ls_pyvmodule_def
         return
-    def _input_output__init__(self, name, lsb, msb):
+    def _input_output__init__(self, name, lsb, msb, parent):
         assert(isinstance(name, str)), name
         assert(isinstance(lsb, int)), lsb
         assert(isinstance(msb, int)), msb
         self.name = name
+        self.parent = parent
         self.width = abs(msb - lsb) + 1
         ### self.bit[?] has a list of loader/driver
         self.bit = {}
         step = 1 if msb >= lsb else -1
         for itr in range(self.width):
-            self.bit[lsb + step * itr] = Bit()
+            self.bit[lsb + step * itr] = Bit(name, lsb + step * itr, parent)
         return
+    def _dct_input_output__init__(self, node, mode="input"):
+        ret = {}
+        PyVInputOutput = PyVInput if mode == "input" else PyVOutput
+        InputOutput = Input if mode == "input" else Output
+        for i in get_node(node, lambda x: isinstance(x, PyVInputOutput)):
+            msb = 0 if i.width == None else int(i.width.msb.value)
+            lsb = 0 if i.width == None else int(i.width.lsb.value)
+            self.ret[i.name] = InputOutput(i.name, lsb, msb, self)
+        return cp(ret)
 
 class ModuleDef(NetListHierObject):
     def __init__(self, node):
@@ -79,11 +96,11 @@ class ModuleDef(NetListHierObject):
         for i in get_node(node, lambda x: isinstance(x, PyVInput)):
             msb = 0 if i.width == None else int(i.width.msb.value)
             lsb = 0 if i.width == None else int(i.width.lsb.value)
-            self.dct_input[i.name] = Input(i.name, lsb, msb)
+            self.dct_input[i.name] = Input(i.name, lsb, msb, self)
         for i in get_node(node, lambda x: isinstance(x, PyVOutput)):
             msb = 0 if i.width == None else int(i.width.msb.value)
             lsb = 0 if i.width == None else int(i.width.lsb.value)
-            self.dct_output[i.name] = Output(i.name, lsb, msb)
+            self.dct_output[i.name] = Output(i.name, lsb, msb, self)
         for i in get_node(node, lambda x: isinstance(x, PyVInstance)):
             module_def = self.get_module_def(i)
             if module_def is None:
@@ -130,11 +147,10 @@ class DummyModuleDef(ModuleDef):
         for p in ls_port:
             name = p.portname
             lsb = msb = 0
-            self.dct_input[name] = Input(name, lsb, msb)
-            self.dct_output[name] = Output(name, lsb, msb)
+            self.dct_input[name] = Input(name, lsb, msb, self)
+            self.dct_output[name] = Output(name, lsb, msb, self)
         return
 
-from copy import deepcopy as cp
 class Instance(NetListHierObject):
     def __init__(self, node, module_def):
         assert(isinstance(node, PyVInstance))
@@ -144,24 +160,25 @@ class Instance(NetListHierObject):
         self.module_def = module_def
         self.dct_input = cp(module_def.dct_input)
         self.dct_output= cp(module_def.dct_output)
-        self.dct_input_arg = {}
-        self.dct_output_arg = {}
         return
 
 class Input(NetListHierObject):
-    def __init__(self, name, lsb, msb):
-        self._input_output__init__(name, lsb, msb)
+    def __init__(self, name, lsb, msb, parent):
+        self._input_output__init__(name, lsb, msb, parent)
         return
 
 class Output(NetListHierObject):
-    def __init__(self, name, lsb, msb):
-        self._input_output__init__(name, lsb, msb)
+    def __init__(self, name, lsb, msb, parent):
+        self._input_output__init__(name, lsb, msb, parent)
         return
 
 class Bit(NetListHierObject):
-    def __init__(self):
+    def __init__(self, name, bit, parent):
+        self.name = name
+        self.bit = bit
         self.wire_name = None
         self.wire_bit = None
         self.ls_loader = []
         self.ls_driver= []
+        self.parent = parent
         return

@@ -48,6 +48,7 @@ def main():
     netlist = NetListHier(ast)
     netlist.show_hier()
     netlist.trace()
+    netlist.show_trace()
 
 if __name__ == '__main__':
     main()

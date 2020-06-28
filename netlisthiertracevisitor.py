@@ -8,9 +8,11 @@ class NetListHierTraceVisitor(object):
         visitor1st = InstanceGetPortArgWireVisitor()
         visitor2nd = DummyModuleDefTraceVisitor()
         visitor3rd = ModuleOutputTraceVisitor()
+        visitor4th = SubModuleInputTraceVisitor()
         visitor1st.visit(node)
         visitor2nd.visit(node)
         visitor3rd.visit(node)
+        visitor4th.visit(node)
         return
 
 class BaseTraceVisitor(object):
@@ -115,7 +117,7 @@ class InstanceGetPortArgWireVisitor(BaseTraceVisitor):
 
     def visit_Pointer(visitor, node):
         assert(isinstance(node, PyVPoiner))
-        wire_name = node.var
+        wire_name = node.var.name
         bit = int(node.ptr.value)
         visitor.dct_wire_name_bit[visitor.cnt_found_bit] = { "name" : wire_name, "bit" : bit}
         visitor.cnt_found_bit += 1
@@ -152,14 +154,43 @@ class DummyModuleDefTraceVisitor(BaseTraceVisitor):
 
 class ModuleOutputTraceVisitor(BaseTraceVisitor):
     def visit_ModuleDef(visitor, node):
-        for mod_o in node.dct_output.values():
-            for mod_o_bitnum in mod_o.bit.keys():
-                for i in node.dct_instance.values():
-                    for inst_o in i.dct_output.values():
-                        for inst_o_b in inst_o.bit.values():
-                            if mod_o.name == inst_o_b.wire_name and \
-                               mod_o_bitnum == inst_o_b.wire_bit:
-                               mod_o.bit[mod_o_bitnum].ls_driver.append(inst_o_b)
-                               inst_o_b.ls_loader.append(mod_o.bit[mod_o_bitnum])
+        for module_output in node.dct_output.values():
+            for module_output_bit in module_output.bit.values():
+                for instance in node.dct_instance.values():
+                    for instance_output in instance.dct_output.values():
+                        for instance_output_bit in instance_output.bit.values():
+                            if module_output_bit.name == instance_output_bit.wire_name and \
+                               module_output_bit.bit  == instance_output_bit.wire_bit:
+                               module_output_bit.ls_driver.append(instance_output_bit)
+                               instance_output_bit.ls_loader.append(module_output_bit)
+        """recursive call"""
+        for i in node.dct_instance.values():
+            visitor.visit(i)
         return
 
+class SubModuleInputTraceVisitor(BaseTraceVisitor):
+    def visit_ModuleDef(visitor, node):
+        for instance in node.dct_instance.values():
+            for instance_input in instance.dct_input.values():
+                for instance_input_bit in instance_input.bit.values():
+                    """module.inputport -> submodule.inputport"""
+                    for module_input in node.dct_input.values():
+                        for module_input_bit in module_input.bit.values():
+                            if module_input_bit.name == instance_input_bit.wire_name and \
+                               module_input_bit.bit  == instance_input_bit.wire_bit:
+                               module_input_bit.ls_loader.append(instance_input_bit)
+                               instance_input_bit.ls_driver.append(module_input_bit)
+                    """submodule.outputport -> submodule.inputport"""
+                    for instance2 in node.dct_instance.values():
+                        if instance is instance2:
+                            continue
+                        for instance2_output in instance2.dct_output.values():
+                            for instance2_output_bit in instance2_output.bit.values():
+                                if instance2_output_bit.wire_name == instance_input_bit.wire_name and \
+                                   instance2_output_bit.wire_bit  == instance_input_bit.wire_bit:
+                                    instance2_output_bit.ls_loader.append(instance_input_bit)
+                                    instance_input_bit.ls_driver.append(instance2_output_bit)
+        """recursive call"""
+        for i in node.dct_instance.values():
+            visitor.visit(i)
+        return
