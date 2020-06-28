@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pyverilog.utils.version
 from pyverilog.vparser.parser import parse
 
-from netlisttracer import NetListHier
+from netlisthiertracer import NetListHier
 
 def main():
     INFO = "Verilog code parser"
@@ -47,6 +47,7 @@ def main():
                             preprocess_define=options.define)
     netlist = NetListHier(ast)
     netlist.show_hier()
+    netlist.trace()
 
 if __name__ == '__main__':
     main()

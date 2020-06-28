@@ -13,6 +13,7 @@ from utils import hasattr_parents
 from utils import get_node
 import sys
 from showhiervisitor import ShowHierVisitor
+from netlisthiertracevisitor import NetListHierTraceVisitor
 
 class NetListHier(object):
     def __init__(self, ast, top_module_name=False):
@@ -43,11 +44,28 @@ class NetListHier(object):
         visitor.visit(self.top_module, offset=offset)
         return
 
+    def trace(self):
+        visitor = NetListHierTraceVisitor()
+        visitor.visit(self.top_module)
+        return
+
 class NetListHierObject(object):
     ls_pyvmodule_def = []
     ls_module_def = []
     def __init__(self, ls_pyvmodule_def):
         NetListHierObject.ls_pyvmodule_def = ls_pyvmodule_def
+        return
+    def _input_output__init__(self, name, lsb, msb):
+        assert(isinstance(name, str)), name
+        assert(isinstance(lsb, int)), lsb
+        assert(isinstance(msb, int)), msb
+        self.name = name
+        self.width = abs(msb - lsb) + 1
+        ### self.bit[?] has a list of loader/driver
+        self.bit = {}
+        step = 1 if msb >= lsb else -1
+        for itr in range(self.width):
+            self.bit[lsb + step * itr] = Bit()
         return
 
 class ModuleDef(NetListHierObject):
@@ -116,8 +134,7 @@ class DummyModuleDef(ModuleDef):
             self.dct_output[name] = Output(name, lsb, msb)
         return
 
-### WANING: THIS IS NOT DEEP COPY
-from copy import copy as cp
+from copy import deepcopy as cp
 class Instance(NetListHierObject):
     def __init__(self, node, module_def):
         assert(isinstance(node, PyVInstance))
@@ -127,25 +144,24 @@ class Instance(NetListHierObject):
         self.module_def = module_def
         self.dct_input = cp(module_def.dct_input)
         self.dct_output= cp(module_def.dct_output)
-        self.dct_output= cp(module_def.dct_output)
+        self.dct_input_arg = {}
+        self.dct_output_arg = {}
         return
 
 class Input(NetListHierObject):
     def __init__(self, name, lsb, msb):
-        assert(isinstance(name, str)), name
-        assert(isinstance(lsb, int)), lsb
-        assert(isinstance(msb, int)), msb
-        self.name = name
-        self.width = abs(msb - lsb) + 1
-        self.ls_loader = [None] * self.width
+        self._input_output__init__(name, lsb, msb)
         return
 
 class Output(NetListHierObject):
     def __init__(self, name, lsb, msb):
-        assert(isinstance(name, str)), name
-        assert(isinstance(lsb, int)), lsb
-        assert(isinstance(msb, int)), msb
-        self.name = name
-        self.width = abs(msb - lsb) + 1
-        self.ls_loader = [None] * self.width
+        self._input_output__init__(name, lsb, msb)
+        return
+
+class Bit(NetListHierObject):
+    def __init__(self):
+        self.wire_name = None
+        self.wire_bit = None
+        self.ls_loder = []
+        self.ls_dirver = []
         return
